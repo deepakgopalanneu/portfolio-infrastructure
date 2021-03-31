@@ -157,26 +157,6 @@ resource "aws_security_group" "elb_security_group" {
 }
 
 
-# IAM POLICY
-# resource "aws_iam_policy" "EC2AccessS3" {
-#   name        = var.s3policyName
-#   description = "Policy for EC2 instance to use S3"
-#   policy      = <<EOF
-# {
-#   "Version": "2012-10-17",
-#   "Statement": [
-#     {
-#       "Effect": "Allow",
-#       "Action": [
-#         "s3:*"
-#       ],
-#       "Resource": ["${aws_s3_bucket.bucket.arn}","${var.bucketARN}" ]
-#     }
-#   ]
-# }
-# EOF
-# }
-
 
 # This policy is required for EC2 instances to download latest application revision.
 resource "aws_iam_policy" "CodeDeploy_EC2_S3" {
@@ -192,7 +172,7 @@ resource "aws_iam_policy" "CodeDeploy_EC2_S3" {
         "s3:Get*",
         "s3:List*"
       ],
-      "Resource": [ "${var.codedeploy_bucket_arn}" , "${var.codedeploy_bucket_arn_star}" ]
+      "Resource": [ "arn:aws:s3:::codedeploy.prod.deepakgopalan.me" , "arn:aws:s3:::codedeploy.prod.deepakgopalan.me/*" ]
     }
   ]
 }
@@ -214,7 +194,7 @@ resource "aws_iam_policy" "GH_Upload_To_S3" {
         "s3:Get*",
         "s3:List*"
       ],
-      "Resource": [ "${var.codedeploy_bucket_arn}" , "${var.codedeploy_bucket_arn_star}"]
+      "Resource": [ "arn:aws:s3:::codedeploy.prod.deepakgopalan.me" , "arn:aws:s3:::codedeploy.prod.deepakgopalan.me/*"]
     }
   ]
 }
@@ -335,11 +315,7 @@ resource "aws_iam_instance_profile" "ec2_role_profile" {
   role = aws_iam_role.EC2ServiceRole.name
 }
 
-#Policy to be attached with EC2ServiceRole role
-# resource "aws_iam_role_policy_attachment" "EC2ServiceRole_webapps3_policy_attacher" {
-#   role       = aws_iam_role.EC2ServiceRole.name
-#   policy_arn = aws_iam_policy.EC2AccessS3.arn
-# }
+
 
 #Policy to be attached with CodeDeployServiceRole role
 resource "aws_iam_role_policy_attachment" "CodeDeployServiceRole_policy_attacher" {
@@ -491,16 +467,15 @@ resource "aws_cloudwatch_metric_alarm" "CPUAlarmLow" {
 # create target group 
 resource "aws_lb_target_group" "target_group" {
   name        = "webapp-target-group"
-  port        = 4200
+  port        = 80
   protocol    = "HTTP"
   vpc_id      = aws_vpc.portfolio_vpc.id
   target_type = "instance"
 
   health_check {
-    path = "/actuator/health"
-    # path                = "/"
+    path                = "/"
     protocol            = "HTTP"
-    port                = 4200
+    port                = 80
     healthy_threshold   = 2
     unhealthy_threshold = 2
     timeout             = 5
@@ -515,10 +490,14 @@ resource "aws_lb_listener" "listner" {
   port              = "80"
   protocol          = "HTTP"
 
-
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.target_group.arn
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 
 }
@@ -553,7 +532,7 @@ resource "aws_lb" "webapp_elb" {
 data "aws_acm_certificate" "certificate" {
   domain = var.route53_record_name
   tags = {
-    Name = "Imported Cert"
+    Name = "NewCert"
   }
 }
 
@@ -583,9 +562,7 @@ resource "aws_sns_topic" "email_topic" {
 
 #create Lambda 
 resource "aws_lambda_function" "lambda_for_email" {
-  # s3_bucket     = "codedeploy.prod.deepakgopalan.me"
-  # s3_key        = "Lambda-1.0-SNAPSHOT.jar"
-  filename      = "lambdaFunction.zip"
+  filename      = "lambda_function1.zip"
   function_name = "lambda_for_email"
   role          = aws_iam_role.lambda_service_role.arn
   handler       = "index.handler"
@@ -634,7 +611,7 @@ resource "aws_iam_role_policy" "lambda_ses_policy" {
       {
         "Effect": "Allow",
         "Action": "ses:SendEmail",
-        "Resource": "arn:aws:ses:us-east-1:384467288578:identity/prod.deepakgopalan.me"
+        "Resource": "arn:aws:ses:us-east-1:384467288578:identity/deepakgopalan.me"
       }
     ]
   }  
