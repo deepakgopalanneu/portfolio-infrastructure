@@ -562,8 +562,8 @@ resource "aws_sns_topic" "email_topic" {
 
 #create Lambda 
 resource "aws_lambda_function" "lambda_for_email" {
-  filename      = "lambda_function1.zip"
-  function_name = "lambda_for_email"
+  filename      = var.lambdafilename
+  function_name = var.lambdafunction_name
   role          = aws_iam_role.lambda_service_role.arn
   handler       = "index.handler"
   runtime       = "nodejs12.x"

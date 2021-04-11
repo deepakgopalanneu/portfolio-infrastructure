@@ -124,8 +124,11 @@ variable "AmazonSSMManagedInstanceCore_arn" {
   default = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-variable "lambdaHandlerMethod" {
-  default = "com.deepak.lambda.LambdaMethodHandler"
+variable "lambdafunction_name" {
+  default = "lambda_for_email"
+}
+
+variable "lambdafilename" {
 }
 
 
